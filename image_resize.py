@@ -14,10 +14,12 @@ def pil_image_input_type(path):
     except OSError:
         raise argparse.ArgumentTypeError("File is not an image")
 
+
 def get_image_size(pil_image):
     return pil_image.width, pil_image.height
 
-if __name__ == '__main__':
+
+def define_cmd_options():
     parser = argparse.ArgumentParser(
         description="devman image resizer script"
     )
@@ -27,21 +29,11 @@ if __name__ == '__main__':
                         help='How many times to enlarge the image (maybe less than 1)')
     parser.add_argument('--width', type=int, help='Output width')
     parser.add_argument('--height', type=int, help='Output height')
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    if not (args.scale or args.width or args.height):
-        sys.exit("At least one transformation param width/height/scale should be passed")
-    if args.scale and (args.width or args.height):
-        sys.exit("You can't use `scale` param and `width`/`height` together")
 
-    input_image_path, input_image = args.input_file
-    input_scale = args.scale
-    input_width = args.width
-    input_height = args.height
-    input_result_path = args.output
-
-    current_width = input_image.width
-    current_height = input_image.height
+def get_target_size(current_size, input_scale, input_width, input_height):
+    current_width, current_height = current_size
     current_proportion = current_height / current_width
 
     if input_scale:
@@ -59,8 +51,39 @@ if __name__ == '__main__':
         target_height = input_height
         target_width = int(target_height / current_proportion)
 
-    target_result_path = input_result_path or re.sub(r'(\.\w+?)?$', r'__{}x{}\1'.format(target_width, target_height),
-                                                     input_image_path, count=1)
+    return target_width, target_height
+
+
+def get_output_path(input_result_path, input_image_path, target_size):
+    return input_result_path or re.sub(
+        r'(\.\w+?)?$', r'__{}x{}\1'.format(*target_size),
+        input_image_path,
+        count=1
+    )
+
+
+if __name__ == '__main__':
+    args = define_cmd_options()
+
+    if not (args.scale or args.width or args.height):
+        sys.exit("At least one transformation param width/height/scale should be passed")
+    if args.scale and (args.width or args.height):
+        sys.exit("You can't use `scale` param and `width`/`height` together")
+
+    input_image_path, input_image = args.input_file
+
+    target_width, target_height = get_target_size(
+        current_size=(input_image.width, input_image.height),
+        input_scale=args.scale,
+        input_width=args.width,
+        input_height=args.height
+    )
+
+    target_result_path = get_output_path(
+        input_result_path=args.output,
+        input_image_path=input_image_path,
+        target_size=(target_width, target_height)
+    )
 
     output_image = input_image.resize((target_width, target_height))
     output_image.save(target_result_path)
