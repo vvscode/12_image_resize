@@ -63,12 +63,32 @@ def validate_params(args):
     if not os.path.isfile(args.input_file):
         return "File not exists"
 
+
 def get_image_size(path):
     try:
         with Image.open(path) as image:
             return image.size
     except OSError:
         return None
+
+
+def resize_image(path, target_result_path, target_size):
+    try:
+        with  Image.open(path) as image:
+            output_image = image.resize(target_size)
+            output_image.save(target_result_path)
+            return True
+    except OSError:
+        return None
+
+
+def is_ratio_diff(current_size, new_size):
+    target_width, target_height = new_size
+    current_width, current_height = current_size
+    # I know about comparation with some precision
+    # But here I what to compare certain ratio (7999x8000 != 8000x8000)
+    return target_height / target_width != current_height / current_width
+
 
 if __name__ == "__main__":
     args = parse_options()
@@ -87,13 +107,9 @@ if __name__ == "__main__":
         input_width=args.width,
         input_height=args.height
     )
-    target_width, target_height = target_size
-    current_width, current_height = image_size
 
-    # I know about comparation with some precision
-    # But here I what to compare certain ratio (7999x8000 != 8000x8000)
-    if target_height / target_width != current_height / current_width:
-        print("The proportions do not match")
+    if is_ratio_diff(image_size, target_size):
+        print("Warning: The proportions do not match")
 
     target_result_path = get_output_path(
         input_result_path=args.output,
@@ -105,11 +121,7 @@ if __name__ == "__main__":
             'File already exists. Do you want to replace it? (y/n) ').lower() != 'y':
         sys.exit()
 
-    try:
-        with  Image.open(args.input_file) as image:
-            output_image = image.resize((target_width, target_height))
-            output_image.save(target_result_path)
-    except OSError:
-        sys.exit("Can't process this file")
-
-    print("File was saved to `{}`".format(target_result_path))
+    if resize_image(args.input_file, target_result_path, target_size):
+        print("File was saved to `{}`".format(target_result_path))
+    else:
+        print("Can't process file")
