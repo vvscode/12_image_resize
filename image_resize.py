@@ -52,21 +52,23 @@ def validate_params(args):
     height = args.height or 0
 
     if not (scale or width or height):
-        sys.exit("At least one transformation param width/height/scale should be passed")
+        return "At least one transformation param width/height/scale should be passed"
 
     if scale and (width or height):
-        sys.exit("You can't use `scale` param and `width`/`height` together")
+        return "You can't use `scale` param and `width`/`height` together"
 
     if scale < 0 or height < 0 or width < 0:
-        sys.exit("You can't pass negative values of params")
+        return "You can't pass negative values of params"
 
     if not os.path.isfile(args.input_file):
-        sys.exit("File not exists")
+        return "File not exists"
 
 
 if __name__ == "__main__":
     args = parse_options()
-    validate_params(args)
+    validation_error = validate_params(args)
+    if validation_error:
+        sys.exit(validation_error)
 
     try:
         with Image.open(args.input_file) as image:
