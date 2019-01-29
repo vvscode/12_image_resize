@@ -15,7 +15,9 @@ def parse_options():
                         help="How many times to enlarge the image (maybe less than 1)")
     parser.add_argument("--width", type=int, help="Output width")
     parser.add_argument("--height", type=int, help="Output height")
-    return parser.parse_args()
+    args = parser.parse_args()
+    validate_params(args, parser)
+    return args
 
 
 def get_target_size(current_size, input_scale, input_width, input_height):
@@ -46,22 +48,22 @@ def get_output_path(input_result_path, input_image_path, target_size):
     )
 
 
-def validate_params(args):
+def validate_params(args, parser):
     scale = args.scale or 0
     width = args.width or 0
     height = args.height or 0
 
     if not (scale or width or height):
-        return "At least one transformation param width/height/scale should be passed"
+        parser.error("At least one transformation param width/height/scale should be passed")
 
     if scale and (width or height):
-        return "You can't use `scale` param and `width`/`height` together"
+        parser.error("You can't use `scale` param and `width`/`height` together")
 
     if scale < 0 or height < 0 or width < 0:
-        return "You can't pass negative values of params"
+        parser.error("You can't pass negative values of params")
 
     if not os.path.isfile(args.input_file):
-        return "File not exists"
+        parser.error("File not exists")
 
 
 def get_image_size(path):
@@ -85,24 +87,26 @@ def resize_image(path, target_result_path, target_size):
 def is_ratio_diff(current_size, new_size):
     target_width, target_height = new_size
     current_width, current_height = current_size
-    # I know about comparation with some precision
-    # But here I what to compare certain ratio (7999x8000 != 8000x8000)
-    return target_height / target_width != current_height / current_width
+    prescition = 2
+    return round(target_height / target_width, prescition) != round(current_height / current_width, prescition)
+
 
 def notify_if_ratio_changed(current_size, new_size):
     if is_ratio_diff(image_size, target_size):
         print("Warning: The proportions do not match")
 
+
 def request_yes_no(text):
-    response = input(text + ' (y/n)').lower()
-    return response.startswith('y')
+    response = input(text + " (y/n) ").lower()
+    return response.startswith("y")
+
+
+def confirm_file_replace():
+    return request_yes_no("File already exists. Do you want to replace it?")
 
 
 if __name__ == "__main__":
     args = parse_options()
-    validation_error = validate_params(args)
-    if validation_error:
-        sys.exit(validation_error)
 
     image_size = get_image_size(args.input_file)
 
@@ -124,8 +128,7 @@ if __name__ == "__main__":
         target_size=target_size
     )
 
-    if os.path.isfile(target_result_path) \
-            and not request_yes_no('File already exists. Do you want to replace it?'):
+    if os.path.isfile(target_result_path) and not confirm_file_replace():
         sys.exit()
 
     if not resize_image(args.input_file, target_result_path, target_size):
