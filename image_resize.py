@@ -74,7 +74,7 @@ def get_image_size(path):
 
 def resize_image(path, target_result_path, target_size):
     try:
-        with  Image.open(path) as image:
+        with Image.open(path) as image:
             output_image = image.resize(target_size)
             output_image.save(target_result_path)
             return True
@@ -88,6 +88,14 @@ def is_ratio_diff(current_size, new_size):
     # I know about comparation with some precision
     # But here I what to compare certain ratio (7999x8000 != 8000x8000)
     return target_height / target_width != current_height / current_width
+
+def notify_if_ratio_changed(current_size, new_size):
+    if is_ratio_diff(image_size, target_size):
+        print("Warning: The proportions do not match")
+
+def request_yes_no(text):
+    response = input(text + ' (y/n)').lower()
+    return response.startswith('y')
 
 
 if __name__ == "__main__":
@@ -108,8 +116,7 @@ if __name__ == "__main__":
         input_height=args.height
     )
 
-    if is_ratio_diff(image_size, target_size):
-        print("Warning: The proportions do not match")
+    notify_if_ratio_changed(image_size, target_size)
 
     target_result_path = get_output_path(
         input_result_path=args.output,
@@ -117,11 +124,11 @@ if __name__ == "__main__":
         target_size=target_size
     )
 
-    if os.path.isfile(target_result_path) and input(
-            'File already exists. Do you want to replace it? (y/n) ').lower() != 'y':
+    if os.path.isfile(target_result_path) \
+            and not request_yes_no('File already exists. Do you want to replace it?'):
         sys.exit()
 
-    if resize_image(args.input_file, target_result_path, target_size):
-        print("File was saved to `{}`".format(target_result_path))
-    else:
-        print("Can't process file")
+    if not resize_image(args.input_file, target_result_path, target_size):
+        sys.exit("Can't process file")
+
+    print("File was saved to `{}`".format(target_result_path))
